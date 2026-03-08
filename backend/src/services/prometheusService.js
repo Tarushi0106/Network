@@ -77,11 +77,11 @@ class PrometheusService {
    * @returns {Promise<Object>} Bandwidth data
    */
   async getCurrentBandwidth(routerIP) {
-    // Download: rate(ifHCInOctets{instance="<IP>"}[5m]) * 8
-    // Upload: rate(ifHCOutOctets{instance="<IP>"}[5m]) * 8
+    // Download: sum by instance of rate(ifHCInOctets{instance="<IP>"}[5m]) * 8
+    // Upload: sum by instance of rate(ifHCOutOctets{instance="<IP>"}[5m]) * 8
     
-    const downloadQuery = `rate(ifHCInOctets{instance="${routerIP}"}[5m]) * 8`;
-    const uploadQuery = `rate(ifHCOutOctets{instance="${routerIP}"}[5m]) * 8`;
+    const downloadQuery = `sum by (instance) (rate(ifHCInOctets{instance="${routerIP}"}[5m])) * 8`;
+    const uploadQuery = `sum by (instance) (rate(ifHCOutOctets{instance="${routerIP}"}[5m])) * 8`;
     
     const [downloadResult, uploadResult] = await Promise.all([
       this.query(downloadQuery),
@@ -146,8 +146,9 @@ class PrometheusService {
     const end = new Date().toISOString();
     const start = new Date(Date.now() - durationMinutes * 60 * 1000).toISOString();
     
-    const downloadQuery = `rate(ifHCInOctets{instance="${routerIP}"}[5m]) * 8`;
-    const uploadQuery = `rate(ifHCOutOctets{instance="${routerIP}"}[5m]) * 8`;
+    // Use sum by (instance) to aggregate all interfaces - gives total bandwidth
+    const downloadQuery = `sum by (instance) (rate(ifHCInOctets{instance="${routerIP}"}[5m])) * 8`;
+    const uploadQuery = `sum by (instance) (rate(ifHCOutOctets{instance="${routerIP}"}[5m])) * 8`;
     
     const [downloadResult, uploadResult] = await Promise.all([
       this.queryRange(downloadQuery, start, end, step),
@@ -203,9 +204,9 @@ class PrometheusService {
    * @returns {Promise<Array>} All routers bandwidth data
    */
   async getAllRoutersBandwidth() {
-    // Query all routers at once
-    const downloadQuery = 'rate(ifHCInOctets[5m]) * 8';
-    const uploadQuery = 'rate(ifHCOutOctets[5m]) * 8';
+    // Query all routers at once using sum to aggregate interfaces
+    const downloadQuery = 'sum by (instance) (rate(ifHCInOctets[5m])) * 8';
+    const uploadQuery = 'sum by (instance) (rate(ifHCOutOctets[5m])) * 8';
     
     const [downloadResult, uploadResult] = await Promise.all([
       this.query(downloadQuery),

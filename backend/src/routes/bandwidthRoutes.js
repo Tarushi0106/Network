@@ -207,8 +207,10 @@ router.get('/history', async (req, res) => {
     // Calculate appropriate step based on duration
     const step = calculateStep(duration);
     
-    const downloadQuery = 'rate(ifHCInOctets[5m]) * 8';
-    const uploadQuery = 'rate(ifHCOutOctets[5m]) * 8';
+    // Query by specific interface (e.g., ether1) - sum all interfaces for total bandwidth
+    // Use ifDescr for interface name like 'ether1', 'ether2', etc.
+    const downloadQuery = 'sum by (instance) (rate(ifHCInOctets{instance="' + instance + '"}[5m])) * 8';
+    const uploadQuery = 'sum by (instance) (rate(ifHCOutOctets{instance="' + instance + '"}[5m])) * 8';
     
     const [downloadResult, uploadResult] = await Promise.all([
       queryPrometheusRange(downloadQuery, start, end, '5m'),
