@@ -1,31 +1,28 @@
 global:
-scrape_interval: 15s
+  scrape_interval: 15s
 
 scrape_configs:
 
-* job_name: "prometheus"
-  static_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
 
-  * targets: ["localhost:9090"]
-
-* job_name: "mikrotik-snmp"
-  metrics_path: /snmp
-  params:
-  module: [if_mib]
-
-  static_configs:
-
-  * targets:
-
-    * 103.200.105.88
-
-  relabel_configs:
-
-  * source_labels: [**address**]
-    target_label: __param_target
-
-  * source_labels: [__param_target]
-    target_label: instance
-
-  * target_label: **address**
-    replacement: localhost:9116
+  - job_name: "mikrotik-snmp"
+    metrics_path: /snmp
+    params:
+      module: [if_mib]
+    static_configs:
+      - targets:
+          - "103.219.0.157"   # Ganpati Peth Sangli
+          - "163.223.65.200"  # Gadhinglaj
+          - "103.219.0.158"   # Market Yard Sangli
+          - "103.219.1.142"   # Miraj
+          - "103.200.105.88"  # Kothrud Pune
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [__address__]
+        target_label: __address__
+        replacement: "localhost:9116"
