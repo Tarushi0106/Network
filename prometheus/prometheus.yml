@@ -1,0 +1,132 @@
+# Prometheus Configuration for Network Monitoring
+# =============================================
+# 
+# This configuration scrapes metrics from the SNMP Exporter
+# which collects data from MikroTik routers.
+#
+# Copy this to your Prometheus config directory and adjust as needed.
+
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+  external_labels:
+    cluster: 'network-monitor'
+    environment: 'production'
+
+# Alerting rules
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # SNMP Exporter for MikroTik routers
+  - job_name: 'snmp'
+    scrape_interval: 60s
+    static_configs:
+      - targets:
+          # Add your MikroTik router IPs here
+          # The SNMP Exporter should be running on localhost:9116
+          - 'localhost:9116'
+        labels:
+          type: 'mikrotik'
+          network: 'production'
+    
+    # SNMP configuration module
+    params:
+      module: [ifmib]  # Use ifmib module for interface metrics
+    
+    metrics_path: /snmp
+    
+    # Relabel rules to extract useful labels
+    relabel_configs:
+      # Use instance IP as the router identifier
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\\d+'
+        replacement: '${1}'
+      
+      # Map instance to router for human-readable names
+      - source_labels: [instance]
+        target_label: router
+        replacement: 'router_${1}'
+      
+      # Keep only relevant metrics
+      - source_labels: [__name__]
+        regex: 'ifHCInOctets|ifHCOutOctets|ifHCInUcastPkts|ifHCOutUcastPkts|ifInErrors|ifOutErrors'
+        action: keep
+
+# Example for monitoring multiple network segments
+# - job_name: 'snmp-branches'
+#   static_configs:
+#     - targets: ['localhost:9116']
+#   params:
+#     module: [ifmib]
+#   relabel_configs:
+#     - source_labels: [instance]
+#       target_label: network_segment
+#       replacement: 'branches'
+
+# Example for monitoring with specific OIDs
+# - job_name: 'mikrotik-detailed'
+#   static_configs:
+#     - targets: ['localhost:9116']
+#   params:
+#     module: [mikrotik]  # Custom module for MikroTik-specific OIDs
+#   metrics_path: /snmp
+
+# Recording rules for common queries
+# These pre-compute frequently used queries for better performance
+# groups:
+#   - name: network_bandwidth
+#     interval: 60s
+#     rules:
+#       - record: job:bandwidth_in_mbps:5m
+#         expr: |
+#           sum by (instance) (rate(ifHCInOctets[5m])) * 8 / 1000000
+#       
+#       - record: job:bandwidth_out_mbps:5m
+#         expr: |
+#           sum by (instance) (rate(ifHCOutOctets[5m])) * 8 / 1000000
+
+# Alert rules for network issues
+# groups:
+#   - name: network_alerts
+#     interval: 60s
+#     rules:
+#       - alert: HighBandwidthUsage
+#         expr: |
+#           (sum by (instance) (rate(ifHCInOctets[5m])) * 8) > 900000000
+#         for: 5m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High bandwidth usage on {{ $labels.instance }}"
+#           description: "Download bandwidth is above 900 Mbps"
+#       
+#       - alert: RouterDown
+#         expr: up{job="snmp"} == 0
+#         for: 2m
+#         labels:
+#           severity: critical
+#         annotations:
+#           summary: "Router {{ $labels.instance }} is down"
+#           description: "Router has been unreachable for 2 minutes"
+#       
+#       - alert: HighPacketErrors
+#         expr: |
+#           rate(ifInErrors[5m]) + rate(ifOutErrors[5m]) > 10
+#         for: 5m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High packet error rate on {{ $labels.instance }}"
