@@ -1,26 +1,12 @@
-# Prometheus Configuration for Network Monitoring
-
 global:
-scrape_interval: 60s
-evaluation_interval: 60s
-
-alerting:
-alertmanagers:
-- static_configs:
-- targets: []
-
-rule_files: []
+scrape_interval: 15s
 
 scrape_configs:
-
-# Prometheus self monitoring
 
 * job_name: "prometheus"
   static_configs:
 
   * targets: ["localhost:9090"]
-
-# MikroTik SNMP Monitoring
 
 * job_name: "mikrotik-snmp"
   metrics_path: /snmp
@@ -32,8 +18,6 @@ scrape_configs:
   * targets:
 
     * 103.200.105.88
-      labels:
-      router: mikrotik-main
 
   relabel_configs:
 
