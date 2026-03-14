@@ -88,7 +88,6 @@ const LOCATIONS = [
   { name: 'Miraj', ip: '103.219.1.142', lat: 16.828588, lng: 74.646139, provisionedSla: 75 },
   { name: 'Kothrud Pune', ip: '103.200.105.88', lat: 18.507197, lng: 73.792366, provisionedSla: 150 }
 ];
-
 // Query Prometheus
 async function queryPrometheus(query) {
   try {
@@ -126,10 +125,38 @@ router.get('/current', async (req, res) => {
     // Query upload bandwidth (ifHCOutOctets)
     const uploadQuery = 'rate(ifHCOutOctets[5m]) * 8';
     
-    const [downloadResult, uploadResult] = await Promise.all([
-      queryPrometheus(downloadQuery),
-      queryPrometheus(uploadQuery)
-    ]);
+    let downloadResult, uploadResult;
+    
+    try {
+      [downloadResult, uploadResult] = await Promise.all([
+        queryPrometheus(downloadQuery),
+        queryPrometheus(uploadQuery)
+      ]);
+    } catch (promError) {
+      console.error('Prometheus query error:', promError.message);
+      // Return empty data instead of 500 if Prometheus is unavailable
+      return res.json({
+        success: true,
+        source: 'prometheus',
+        data: LOCATIONS.map(loc => ({
+          location: loc.name,
+          ip: loc.ip,
+          download: 0,
+          upload: 0,
+          downloadMbps: 0,
+          uploadMbps: 0,
+          totalMbps: 0,
+          status: 'offline',
+          provisionedSla: loc.provisionedSla,
+          slaUtilization: null,
+          providedBandwidth: loc.provisionedSla,
+          usedBandwidth: 0,
+          unusedBandwidth: loc.provisionedSla,
+          utilizationPercent: 0
+        })),
+        warning: 'Prometheus unavailable - showing offline status'
+      });
+    }
     
     // Process results and map to locations
     const results = LOCATIONS.map(location => {
@@ -160,6 +187,12 @@ router.get('/current', async (req, res) => {
       const provisionedSla = location.provisionedSla || 100;
       const slaUtilization = isOnline ? ((totalMbps / provisionedSla) * 100).toFixed(1) : null;
       
+      // Calculate new fields for bandwidth utilization
+      const usedBandwidth = isOnline ? parseFloat(totalMbps.toFixed(2)) : 0;
+      const providedBandwidth = provisionedSla;
+      const unusedBandwidth = isOnline ? Math.max(0, parseFloat((provisionedSla - totalMbps).toFixed(2))) : provisionedSla;
+      const utilizationPercent = isOnline ? parseFloat(slaUtilization) : 0;
+      
       return {
         location: location.name,
         ip: location.ip,
@@ -171,6 +204,11 @@ router.get('/current', async (req, res) => {
         uploadMbps: (totalUpload / 1000000).toFixed(2),
         provisionedSla: provisionedSla,
         slaUtilization: slaUtilization,
+        // New fields for bandwidth utilization
+        providedBandwidth: providedBandwidth,
+        usedBandwidth: usedBandwidth,
+        unusedBandwidth: unusedBandwidth,
+        utilizationPercent: utilizationPercent,
         status: isOnline ? 'online' : 'offline'
       };
     });
@@ -207,10 +245,8 @@ router.get('/history', async (req, res) => {
     // Calculate appropriate step based on duration
     const step = calculateStep(duration);
     
-    // Query by specific interface (e.g., ether1) - sum all interfaces for total bandwidth
-    // Use ifDescr for interface name like 'ether1', 'ether2', etc.
-    const downloadQuery = 'sum by (instance) (rate(ifHCInOctets{instance="' + instance + '"}[5m])) * 8';
-    const uploadQuery = 'sum by (instance) (rate(ifHCOutOctets{instance="' + instance + '"}[5m])) * 8';
+    const downloadQuery = 'rate(ifHCInOctets[5m]) * 8';
+    const uploadQuery = 'rate(ifHCOutOctets[5m]) * 8';
     
     const [downloadResult, uploadResult] = await Promise.all([
       queryPrometheusRange(downloadQuery, start, end, '5m'),

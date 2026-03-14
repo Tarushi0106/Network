@@ -11,7 +11,7 @@ const LOCATIONS = [
 
 // Grafana configuration
 const GRAFANA_CONFIG = {
-  baseUrl: 'http://localhost:3000',
+  baseUrl: 'http://51.20.52.19:3000',
   dashboardUid: 'adhj2dk',
   panelId: '2', // Adjust based on your panel
   theme: 'dark'
@@ -44,7 +44,7 @@ const GrafanaPanel = () => {
   // Fetch router status from backend
   const fetchRouterStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/bandwidth/current');
+      const response = await fetch('http://51.20.52.19:5000/api/bandwidth/current');
       const data = await response.json();
       
       if (data.success) {

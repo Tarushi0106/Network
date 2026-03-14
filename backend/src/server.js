@@ -21,6 +21,7 @@ const alertRoutes = require('./routes/alertRoutes');
 const grafanaRoutes = require('./routes/grafanaRoutes');
 const bandwidthRoutes = require('./routes/bandwidthRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
+const networkMonitoringRoutes = require('./routes/networkMonitoringRoutes');
 
 // Import services
 const prometheusService = require('./services/prometheusService');
@@ -38,10 +39,8 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
-  credentials: true
+  origin: "*"
 }));
-
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -117,6 +116,9 @@ app.use('/api/bandwidth', bandwidthRoutes);
 
 // Device routes (doesn't require MongoDB)
 app.use('/api', deviceRoutes);
+
+// Network Monitoring routes (consolidated - network-downtime and network-outage-history)
+app.use('/api', networkMonitoringRoutes);
 
 // ============================================================================
 // PROMETHEUS DIRECT PROXY (Optional - for frontend to query Prometheus directly)
@@ -350,7 +352,7 @@ mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✓ Connected to MongoDB');
     
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`✓ Server running on port ${PORT}`);
       console.log(`  Health check: http://localhost:${PORT}/api/health`);
       console.log(`  API base: http://localhost:${PORT}/api`);
@@ -361,7 +363,7 @@ mongoose.connect(MONGODB_URI)
     console.log('⚠️  Running without MongoDB - using mock data');
     
     // Start server anyway without MongoDB
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`✓ Server running on port ${PORT} (without MongoDB)`);
       console.log(`  Health check: http://localhost:${PORT}/api/health`);
       console.log(`  API base: http://localhost:${PORT}/api`);

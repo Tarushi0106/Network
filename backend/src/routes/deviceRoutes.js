@@ -8,18 +8,21 @@
  * - GET /api/alerts - Network alerts
  * - GET /api/bandwidth/:routerIp - Bandwidth for specific router
  */
-
+const ping = require("ping");
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
 const PROMELLEUS_URL = process.env.PROMETHEUS_URL || 'http://localhost:9090';
-
+async function checkRouter(ip) {
+  const result = await ping.promise.probe(ip);
+  return result.alive;
+}
 // Network locations with IP mapping (fallback if MongoDB not available)
 const LOCATIONS = [
   { name: 'Ganpati Peth Sangli', ip: '103.219.0.157', lat: 16.862013, lng: 74.560903, status: 'online' },
-  { name: 'Gadhinglaj', ip: '163.223.65.200', lat: 16.22582, lng: 74.35093, status: 'offline' },
-  { name: 'Market Yard Sangli', ip: '103.219.0.158', lat: 16.850162, lng: 74.584864, status: 'online' },
+  { name: 'Gadhinglaj', ip: '103.200.105.88', lat: 16.22582, lng: 74.35093, status: 'offline' },
+  { name: 'Market Yard Sangli', ip: '103.200.105.88', lat: 16.850162, lng: 74.584864, status: 'online' },
   { name: 'Miraj', ip: '103.219.1.142', lat: 16.828588, lng: 74.646139, status: 'online' },
   { name: 'Kothrud Pune', ip: '103.200.105.88', lat: 18.507197, lng: 73.792366, status: 'online' }
 ];
@@ -54,48 +57,38 @@ async function queryPrometheusRange(query, start, end, step = '1m') {
  * GET /api/devices
  * Returns total routers and device status
  */
-router.get('/devices', async (req, res) => {
-  try {
-    // Try to get router status from Prometheus
-    const upQuery = 'up{job="snmp"}';
-    const upResult = await queryPrometheus(upQuery);
-    
-    const onlineCount = upResult?.data?.result?.length || 0;
-    const offlineCount = LOCATIONS.length - onlineCount;
-    
-    // Get device details with status
-    const devices = LOCATIONS.map(loc => {
-      const upMetric = upResult?.data?.result?.find(m => m.metric.instance === loc.ip);
-      const isOnline = !!upMetric;
-      
-      return {
-        name: loc.name,
-        ip: loc.ip,
-        status: isOnline ? 'online' : 'offline',
-        latitude: loc.lat,
-        longitude: loc.lng
-      };
-    });
-    
-    res.json({
-      success: true,
-      data: {
-        total: LOCATIONS.length,
-        online: onlineCount,
-        offline: offlineCount,
-        devices: devices
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching devices:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch devices',
-      message: error.message
-    });
-  }
-});
+router.get("/devices", async (req, res) => {
 
+  const devices = await Promise.all(
+    LOCATIONS.map(async (loc) => {
+
+      const upMetric = upResult?.data?.result?.find(
+        m => m.metric.instance === loc.ip
+      );
+
+let isOnline = false;
+
+if (upMetric && upMetric.value && upMetric.value[1] === "1") {
+  isOnline = true;
+}
+
+return {
+  name: loc.name,
+  ip: loc.ip,
+  status: isOnline ? "online" : "offline",
+  latitude: loc.lat,
+  longitude: loc.lng
+};
+
+    })
+  );
+
+  res.json({
+    success: true,
+    devices
+  });
+
+});
 /**
  * GET /api/network-health
  * Returns counts of devices in health categories
@@ -451,3 +444,157 @@ router.get('/bandwidth/top', async (req, res) => {
 });
 
 module.exports = router;
+
+/**
+ * GET /api/network-downtime
+ * Fetch network downtime events from Prometheus
+ * 
+ * Uses the 'up' metric to detect when devices were down.
+ * When up == 0, the device is down.
+ * 
+ * Query parameters:
+ * - hours: Number of hours to look back (default: 24)
+ * 
+ * Returns:
+ * - Array of downtime events with device name, down time, up time, and duration
+ */
+router.get('/network-downtime', async (req, res) => {
+  try {
+    const { hours = 24 } = req.query;
+    const hoursNum = parseInt(hours) || 24;
+    
+    const end = new Date();
+    const start = new Date(end.getTime() - hoursNum * 60 * 60 * 1000);
+    
+    console.log(`Fetching network downtime for last ${hoursNum} hours`);
+    console.log(`Time range: ${start.toISOString()} to ${end.toISOString()}`);
+    
+    // Query for 'up' metric to get device status over time
+    const upQuery = 'up';
+    
+    const upResult = await queryPrometheusRange(
+      upQuery,
+      start.toISOString(),
+      end.toISOString(),
+      '1m' // 1 minute resolution
+    );
+    
+    if (!upResult?.data?.result || upResult.data.result.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No uptime data available'
+      });
+    }
+    
+    // Process each device's uptime data
+    const downtimeEvents = [];
+    
+    for (const metric of upResult.data.result) {
+      const instance = metric.metric.instance;
+      const job = metric.metric.job || 'snmp';
+      
+      // Find location name from IP
+      const location = LOCATIONS.find(loc => loc.ip === instance);
+      const deviceName = location?.name || instance;
+      
+      // Get the time series data
+      const values = metric.values || [];
+      
+      if (values.length < 2) continue;
+      
+      // Find downtime periods (where up == 0)
+      let downStart = null;
+      
+      for (let i = 0; i < values.length; i++) {
+        const [timestamp, value] = values[i];
+        const time = new Date(timestamp * 1000);
+        const isUp = parseFloat(value) === 1;
+        
+        if (!isUp && downStart === null) {
+          // Device went down
+          downStart = time;
+        } else if (isUp && downStart !== null) {
+          // Device came back up
+          const durationMs = time.getTime() - downStart.getTime();
+          const duration = formatDuration(durationMs);
+          
+          downtimeEvents.push({
+            device: deviceName,
+            ip: instance,
+            downAt: downStart.toISOString(),
+            upAt: time.toISOString(),
+            duration: duration,
+            durationMs: durationMs
+          });
+          
+          downStart = null;
+        }
+      }
+      
+      // If device is still down at end of time range
+      if (downStart !== null) {
+        const now = new Date();
+        const durationMs = now.getTime() - downStart.getTime();
+        const duration = formatDuration(durationMs);
+        
+        downtimeEvents.push({
+          device: deviceName,
+          ip: instance,
+          downAt: downStart.toISOString(),
+          upAt: null, // Still down
+          duration: duration,
+          durationMs: durationMs,
+          isActive: true
+        });
+      }
+    }
+    
+    // Sort by downAt time (newest first)
+    downtimeEvents.sort((a, b) => new Date(b.downAt) - new Date(a.downAt));
+    
+    // Calculate total downtime in last 24 hours
+    const totalDowntimeMs = downtimeEvents.reduce((sum, event) => {
+      // For active outages, count up to current time
+      return sum + (event.isActive ? event.durationMs : event.durationMs);
+    }, 0);
+    
+    console.log(`Found ${downtimeEvents.length} downtime events`);
+    
+    res.json({
+      success: true,
+      data: downtimeEvents,
+      summary: {
+        totalEvents: downtimeEvents.length,
+        activeOutages: downtimeEvents.filter(e => e.isActive).length,
+        totalDowntimeMs: totalDowntimeMs,
+        totalDowntimeFormatted: formatDuration(totalDowntimeMs)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching network downtime:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch network downtime',
+      message: error.message
+    });
+  }
+});
+
+// Helper function to format duration
+function formatDuration(ms) {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    return `${days}d ${hours % 24}h`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  } else if (minutes > 0) {
+    return `${minutes} minutes`;
+  } else {
+    return `${seconds} seconds`;
+  }
+}

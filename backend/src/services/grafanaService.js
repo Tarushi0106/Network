@@ -1,32 +1,31 @@
-const axios = require('axios');
 
 // Grafana configuration
-const GRAFANA_URL = process.env.GRAFANA_URL || 'http://localhost:3000';
-const GRAFANA_API_KEY = process.env.GRAFANA_API_KEY || '';
+const axios = require('axios');
 
-// Create axios instance for Grafana API
 const grafanaClient = axios.create({
-  baseURL: `${GRAFANA_URL}/api`,
-  headers: GRAFANA_API_KEY ? {
-    'Authorization': `Bearer ${GRAFANA_API_KEY}`,
-    'Content-Type': 'application/json'
-  } : {
+  baseURL: `${process.env.GRAFANA_URL}/api`,
+  headers: {
+    Authorization: `Bearer ${process.env.GRAFANA_API_KEY}`,
     'Content-Type': 'application/json'
   }
 });
 
-/**
- * Fetch all alerts from Grafana
- */
 async function getAlerts() {
   try {
-    const response = await grafanaClient.get('/alerts');
+    const response = await grafanaClient.get('/alertmanager/grafana/api/v2/alerts');
     return response.data;
   } catch (error) {
-    console.error('Error fetching Grafana alerts:', error.message);
+    console.error('Grafana API error:', error.message);
     return [];
   }
 }
+
+module.exports = {
+  getAlerts
+};
+/**
+ * Fetch all alerts from Grafana
+ */
 
 /**
  * Fetch alert states for dashboard
@@ -125,8 +124,8 @@ async function getRouterBandwidth(routerIP, timeRange = '1h') {
 async function getAllRoutersBandwidth(timeRange = '1h') {
   const routers = [
     { name: 'Ganpati Peth Sangli', ip: '103.219.0.157', lat: 16.862013, lng: 74.560903 },
-    { name: 'Gadhinglaj', ip: '163.223.65.200', lat: 16.22582, lng: 74.35093 },
-    { name: 'Market Yard Sangli', ip: '103.219.0.158', lat: 16.850162, lng: 74.584864 },
+    { name: 'Gadhinglaj', ip: '103.200.105.88', lat: 16.22582, lng: 74.35093 },
+    { name: 'Market Yard Sangli', ip: '103.200.105.88', lat: 16.850162, lng: 74.584864 },
     { name: 'Miraj', ip: '103.219.1.142', lat: 16.828588, lng: 74.646139 },
     { name: 'Kothrud Pune', ip: '103.200.105.88', lat: 18.507197, lng: 73.792366 },
   ];

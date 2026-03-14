@@ -1,3 +1,4 @@
+const API_URL = "http://51.20.52.19:5000";
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -19,18 +20,29 @@ const RouterBandwidthPanel = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('24h');
 
-  const API_URL = 'http://localhost:5000';
+  const d = "http://51.20.52.19:5000";
 
   // Fetch bandwidth data
   const fetchData = async () => {
     setLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
     try {
       // Fetch current bandwidth
-      const currentRes = await fetch(`${API_URL}/api/bandwidth/current`);
+      const currentRes = await fetch(`${API_URL}/api/bandwidth/current`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!currentRes.ok) throw new Error(`HTTP ${currentRes.status}`);
       const currentData = await currentRes.json();
 
       // Fetch history
-      const historyRes = await fetch(`${API_URL}/api/bandwidth/history?duration=${timeRange}`);
+      const historyRes = await fetch(`${API_URL}/api/bandwidth/history?duration=${timeRange}`, {
+        signal: controller.signal
+      });
+      if (!historyRes.ok) throw new Error(`HTTP ${historyRes.status}`);
       const historyData = await historyRes.json();
 
       if (currentData.success && historyData.success) {
@@ -59,7 +71,10 @@ const RouterBandwidthPanel = () => {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch data:', err);
+      // Don't log error for aborted requests (timeout)
+      if (err.name !== 'AbortError') {
+        console.error('Failed to fetch data:', err);
+      }
       setBandwidthData([]);
     } finally {
       setLoading(false);

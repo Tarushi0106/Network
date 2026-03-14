@@ -152,12 +152,20 @@ function NetworkHealthPanel() {
   const [healthData, setHealthData] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = 'http://localhost:5000';
+  const API_URL = 'http://51.20.52.19:5000';
   
   // Fetch data from API
   const fetchData = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
     try {
-      const bandwidthRes = await fetch(`${API_URL}/api/bandwidth/current`);
+      const bandwidthRes = await fetch(`${API_URL}/api/bandwidth/current`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!bandwidthRes.ok) throw new Error(`HTTP ${bandwidthRes.status}`);
       const bandwidthData = await bandwidthRes.json();
       
       if (bandwidthData.success && bandwidthData.data) {
@@ -182,7 +190,12 @@ function NetworkHealthPanel() {
             isOnline,
             activityLevel,
             provisionedSla: device.provisionedSla,
-            slaUtilization
+            slaUtilization,
+            // New fields
+            providedBandwidth: device.providedBandwidth || device.provisionedSla,
+            usedBandwidth: device.usedBandwidth || total,
+            unusedBandwidth: device.unusedBandwidth || (device.provisionedSla - total),
+            utilizationPercent: device.utilizationPercent || slaUtilization
           };
         });
         
@@ -190,6 +203,12 @@ function NetworkHealthPanel() {
         const onlineDevices = devices.filter(d => d.isOnline);
         const totalDownload = onlineDevices.reduce((sum, d) => sum + d.download, 0);
         const totalUpload = onlineDevices.reduce((sum, d) => sum + d.upload, 0);
+        
+        // Calculate total provisioned bandwidth from all devices
+        const totalProvisioned = devices.reduce((sum, d) => sum + (d.provisionedSla || 0), 0);
+        const totalUsed = devices.reduce((sum, d) => sum + d.usedBandwidth, 0);
+        const totalUnused = devices.reduce((sum, d) => sum + (d.unusedBandwidth > 0 ? d.unusedBandwidth : 0), 0);
+        const totalUtilization = totalProvisioned > 0 ? (totalUsed / totalProvisioned) * 100 : 0;
         
         // Calculate breakdown
         const breakdown = {
@@ -206,6 +225,10 @@ function NetworkHealthPanel() {
           onlineCount: onlineDevices.length,
           totalDownload,
           totalUpload,
+          totalProvisioned,
+          totalUsed,
+          totalUnused,
+          totalUtilization,
           breakdown,
           avgLatency: Math.round(8 + Math.random() * 15),
           uptime: (99 + Math.random()).toFixed(1),
@@ -213,6 +236,11 @@ function NetworkHealthPanel() {
         });
       }
     } catch (err) {
+      // Don't set error for aborted requests (timeout)
+      if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+        console.log('Request timed out or aborted');
+        return;
+      }
       console.error('Failed to fetch data:', err);
     } finally {
       setLoading(false);
@@ -261,7 +289,7 @@ function NetworkHealthPanel() {
     );
   }
   
-  const { devices, onlineCount, totalDevices, totalDownload, totalUpload, breakdown, topUsage } = healthData;
+  const { devices, onlineCount, totalDevices, totalDownload, totalUpload, breakdown, topUsage, totalProvisioned, totalUsed, totalUnused, totalUtilization } = healthData;
   
   return (
     <div style={{
@@ -326,6 +354,62 @@ function NetworkHealthPanel() {
         />
       </div>
       
+      {/* Bandwidth Utilization Progress Bar */}
+      <div style={{ 
+        padding: '12px', 
+        backgroundColor: '#f8fafc', 
+        borderRadius: '8px', 
+        marginBottom: '14px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}>
+          <div>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: '#1e293b' }}>Bandwidth Utilization</span>
+            <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>
+              {totalUsed.toFixed(1)} / {totalProvisioned.toFixed(0)} Mbps used
+            </span>
+          </div>
+          <span style={{ 
+            fontSize: '14px', 
+            fontWeight: '700', 
+            color: totalUtilization > 80 ? '#ef4444' : totalUtilization > 60 ? '#f97316' : '#16a34a' 
+          }}>
+            {totalUtilization.toFixed(1)}%
+          </span>
+        </div>
+        {/* Progress bar background */}
+        <div style={{ 
+          height: '10px', 
+          backgroundColor: '#e2e8f0', 
+          borderRadius: '5px',
+          overflow: 'hidden'
+        }}>
+          {/* Progress bar fill */}
+          <div style={{
+            height: '100%',
+            width: `${Math.min(totalUtilization, 100)}%`,
+            backgroundColor: totalUtilization > 80 ? '#ef4444' : totalUtilization > 60 ? '#f97316' : '#16a34a',
+            borderRadius: '5px',
+            transition: 'width 0.3s ease'
+          }} />
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          marginTop: '6px',
+          fontSize: '10px',
+          color: '#64748b'
+        }}>
+          <span>Unused: {totalUnused.toFixed(1)} Mbps</span>
+          <span>SLA Capacity: {totalProvisioned.toFixed(0)} Mbps</span>
+        </div>
+      </div>
+      
       {/* Internet Activity Table with SLA */}
       <div style={{ marginBottom: '14px' }}>
         <h4 style={{ 
@@ -343,7 +427,7 @@ function NetworkHealthPanel() {
         {/* Table Header */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1.5fr 0.6fr 0.6fr 0.5fr 0.8fr 1fr',
+          gridTemplateColumns: '1.5fr 0.5fr 0.5fr 0.4fr 0.6fr 0.7fr 0.8fr',
           gap: '4px',
           padding: '8px 10px',
           backgroundColor: '#f8fafc',
@@ -354,11 +438,12 @@ function NetworkHealthPanel() {
           textTransform: 'uppercase',
         }}>
           <div>Location</div>
-          <div title="Internet coming to the location">Coming In ↓</div>
-          <div title="Internet being used by the location">Going Out ↑</div>
+          <div title="Internet coming to the location">In ↓</div>
+          <div title="Internet being used by the location">Out ↑</div>
           <div>Total</div>
-          <div title="Maximum internet capacity">SLA (Mbps)</div>
-          <div>SLA Usage</div>
+          <div title="Maximum internet capacity">SLA</div>
+          <div>Usage</div>
+          <div>Unused</div>
         </div>
         
         {/* Table Body */}
@@ -371,7 +456,7 @@ function NetworkHealthPanel() {
           {devices.map((device, index) => (
             <div key={device.ip} style={{
               display: 'grid',
-              gridTemplateColumns: '1.5fr 0.6fr 0.6fr 0.5fr 0.8fr 1fr',
+              gridTemplateColumns: '1.5fr 0.5fr 0.5fr 0.4fr 0.6fr 0.7fr 0.8fr',
               gap: '4px',
               padding: '10px',
               alignItems: 'center',
@@ -389,7 +474,7 @@ function NetworkHealthPanel() {
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#16a34a' }}>
                 {device.isOnline ? (
                   <>
-                    {device.download.toFixed(1)} <span style={{ fontSize: '9px', color: '#94a3b8' }}>Mbps</span>
+                    {device.download < 0.01 ? "<0.01" : device.download.toFixed(2)} <span style={{ fontSize: '9px', color: '#94a3b8' }}>Mbps</span>
                   </>
                 ) : (
                   <span style={{ fontSize: '11px', color: '#94a3b8' }}>—</span>
@@ -420,7 +505,7 @@ function NetworkHealthPanel() {
               
               {/* Provisioned SLA */}
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
-                {device.provisionedSla} Mbps
+                {device.isOnline ? `${device.provisionedSla} Mbps` : '—'}
               </div>
               
               {/* SLA Usage Progress Bar */}
@@ -429,6 +514,18 @@ function NetworkHealthPanel() {
                   utilization={device.slaUtilization} 
                   provisionedSla={device.provisionedSla} 
                 />
+              </div>
+              
+              {/* Unused Bandwidth */}
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#16a34a' }}>
+                {device.isOnline && device.provisionedSla ? (
+                  <>
+                    {device.unusedBandwidth > 0 ? device.unusedBandwidth.toFixed(1) : '0.0'} 
+                    <span style={{ fontSize: '9px', color: '#94a3b8' }}> Mbps</span>
+                  </>
+                ) : (
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>—</span>
+                )}
               </div>
             </div>
           ))}

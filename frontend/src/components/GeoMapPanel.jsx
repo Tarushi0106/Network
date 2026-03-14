@@ -79,12 +79,23 @@ const GeoMapPanel = ({ timeRange = '1h' }) => {
   const [selectedLocation, setSelectedLocation] = useState(locationsWithIds[0]);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = 'http://localhost:5000';
+  const API_URL = 'http://51.20.52.19:5000';
   
   // Fetch real data from API
   const fetchData = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
     try {
-      const bandwidthRes = await fetch(`${API_URL}/api/bandwidth/current`);
+      const bandwidthRes = await fetch(`${API_URL}/api/bandwidth/current`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!bandwidthRes.ok) {
+        throw new Error(`HTTP error! status: ${bandwidthRes.status}`);
+      }
+      
       const bandwidthData = await bandwidthRes.json();
       
       if (bandwidthData.success && bandwidthData.data) {
@@ -135,7 +146,10 @@ const GeoMapPanel = ({ timeRange = '1h' }) => {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch map data:', err);
+      // Don't log error for aborted requests (timeout)
+      if (err.name !== 'AbortError') {
+        console.error('Failed to fetch map data:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -446,7 +460,7 @@ const GeoMapPanel = ({ timeRange = '1h' }) => {
                           </span>
                         </div>
                         <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 4px 0' }}>
-                          Provisioned Internet Capacity: <strong>{selectedLocation.provisionedSla} Mbps</strong>
+                          Provisioned Internet Capacity: <strong>{selectedLocation.isOnline ? `${selectedLocation.provisionedSla} Mbps` : '—'}</strong>
                         </p>
                         <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 8px 0' }}>
                           Current Usage: <strong>{selectedLocation.total.toFixed(1)} Mbps</strong>
@@ -487,7 +501,7 @@ const GeoMapPanel = ({ timeRange = '1h' }) => {
                           </span>
                         </div>
                         <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 8px 0' }}>
-                          Provisioned Internet Capacity: <strong>{selectedLocation.provisionedSla} Mbps</strong>
+                          Provisioned Internet Capacity: <strong>{selectedLocation.isOnline ? `${selectedLocation.provisionedSla} Mbps` : '—'}</strong>
                         </p>
                         <p style={{ fontSize: '12px', color: '#94a3b8' }}>
                           SLA Utilization: <strong>N/A</strong>

@@ -234,7 +234,7 @@ function App() {
             <RouterBandwidthPanel />
           </div>
 
-          {/* Second Row - Network Health and Alerts */}
+          {/* Second Row - Network Health, Alerts, and Downtime */}
           <div style={styles.bottomRow}>
             {/* Network Health */}
             <div>
@@ -246,6 +246,8 @@ function App() {
               <RecentAlertsPanel />
             </div>
           </div>
+
+
 
           {/* Third Row - Additional Stats */}
           <div style={styles.statsRow}>

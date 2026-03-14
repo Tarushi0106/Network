@@ -548,7 +548,7 @@ router.post('/seed', async (req, res) => {
       {
         name: 'Gadhinglaj',
         shortName: 'Gadhinglaj',
-        staticIP: '163.223.65.200',
+        staticIP: '103.200.105.88',
         hostname: 'router-gadhinglaj',
         location: {
           type: 'Point',
@@ -579,7 +579,7 @@ router.post('/seed', async (req, res) => {
       {
         name: 'Market Yard Sangli',
         shortName: 'Market Yard',
-        staticIP: '103.219.0.158',
+        staticIP: '103.200.105.88',
         hostname: 'router-marketyard',
         location: {
           type: 'Point',
