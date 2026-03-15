@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, AlertCircle, Info, X, Clock, MapPin, RefreshCw } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, RefreshCw } from 'lucide-react';
 
 // Get severity color
 function getSeverityColor(severity) {
@@ -27,13 +27,13 @@ function getSeverityBg(severity) {
   }
 }
 
-// Format date
-function formatDate(isoString) {
-  if (!isoString) return 'Unknown';
-  const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', {
-    day: '2-digit',
+// Format timestamp
+function formatTimestamp(timestamp) {
+  if (!timestamp) return 'Unknown';
+  const date = new Date(timestamp);
+  return date.toLocaleString('en-US', {
     month: 'short',
+    day: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -50,19 +50,17 @@ function mapIpToLocation(ip) {
     '103.219.1.142': 'Miraj',
     '103.200.105.90': 'Kothrud Pune'
   };
-  return locations[ip] || ip || 'Unknown Location';
+  return locations[ip] || ip || 'Unknown';
 }
 
 // Alert Item Component
 function AlertItem({ alert }) {
-  const severity = alert.severity || 'warning';
+  const severity = alert.severity || alert.labels?.severity || 'warning';
   const color = getSeverityColor(severity);
   const bgColor = getSeverityBg(severity);
   
   const SeverityIcon = severity === 'critical' ? AlertTriangle : 
                        severity === 'warning' ? AlertCircle : Info;
-  
-  const isFiring = alert.state === 'firing' || alert.state === 'alerting';
   
   return (
     <div style={{
@@ -73,72 +71,50 @@ function AlertItem({ alert }) {
       border: `1px solid ${color}30`,
       borderLeft: `3px solid ${color}`,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            backgroundColor: bgColor,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
+      <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+        <div style={{
+          width: '28px',
+          height: '28px',
+          borderRadius: '50%',
+          backgroundColor: bgColor,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <SeverityIcon size={14} color={color} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#1e293b', 
+            margin: '0 0 4px 0' 
           }}>
-            <SeverityIcon size={14} color={color} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ 
-              fontSize: '13px', 
-              fontWeight: '600', 
-              color: '#1e293b', 
-              margin: '0 0 4px 0' 
+            {alert.name || alert.labels?.alertname || 'Unknown Alert'}
+          </p>
+          <p style={{ 
+            fontSize: '11px', 
+            color: '#64748b', 
+            margin: '0 0 6px 0'
+          }}>
+            Instance: {alert.device || alert.labels?.instance || 'Unknown'}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: '10px',
+              fontWeight: '600',
+              color: color,
+              textTransform: 'uppercase',
             }}>
-              {alert.name || alert.labels?.alertname || 'Unknown Alert'}
-            </p>
-            <p style={{ 
-              fontSize: '11px', 
-              color: '#64748b', 
-              margin: '0 0 6px 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
+              {alert.state || 'firing'}
+            </span>
+            <span style={{
+              fontSize: '10px',
+              color: '#94a3b8',
             }}>
-              <MapPin size={10} />
-              {mapIpToLocation(alert.labels?.instance || alert.labels?.host)}
-            </p>
-            {alert.description && (
-              <p style={{ 
-                fontSize: '10px', 
-                color: '#94a3b8', 
-                margin: '0 0 6px 0',
-                lineHeight: 1.4
-              }}>
-                {alert.description.length > 80 
-                  ? alert.description.substring(0, 80) + '...' 
-                  : alert.description}
-              </p>
-            )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{
-                fontSize: '10px',
-                fontWeight: '600',
-                color: color,
-                textTransform: 'uppercase',
-              }}>
-                {isFiring ? 'Firing' : alert.state}
-              </span>
-              <span style={{
-                fontSize: '10px',
-                color: '#94a3b8',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px'
-              }}>
-                <Clock size={10} />
-                {formatDate(alert.startsAt)}
-              </span>
-            </div>
+              {formatTimestamp(alert.activeAt)}
+            </span>
           </div>
         </div>
       </div>
@@ -152,49 +128,26 @@ function RecentAlertsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Use backend API as proxy to avoid CORS
   const API_URL = 'http://51.20.52.19:5000';
   
   const fetchAlerts = async () => {
     try {
-      console.log('Fetching alerts from backend...');
+      console.log('Fetching alerts from:', `${API_URL}/api/alerts`);
       
-      // Use backend proxy endpoint
-      const response = await fetch(`${API_URL}/api/alerts`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
+      const response = await fetch(`${API_URL}/api/alerts`);
       const data = await response.json();
       
       console.log('Alerts response:', data);
       
-      // Handle both response formats
-      const alertsArray = data.alerts || data.data || [];
+      // Parse alerts from response.data.data (as per backend format)
+      const alertsArray = data?.data || [];
+      console.log('Alerts array:', alertsArray);
       
       if (Array.isArray(alertsArray)) {
-        // Map alerts to our format
-        const mappedAlerts = alertsArray.map((alert, index) => ({
-          name: alert.name || alert.labels?.alertname || 'Unknown',
-          severity: alert.severity || alert.labels?.severity || 'warning',
-          state: alert.status || alert.state || 'pending',
-          labels: alert.labels || {},
-          description: alert.description || alert.annotations?.description || '',
-          startsAt: alert.time || alert.startedAt || alert.startsAt || new Date().toISOString(),
-          fingerprint: alert.fingerprint || `alert-${index}`
-        }));
-        
-        // Sort by start time (newest first)
-        mappedAlerts.sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
-        
-        setAlerts(mappedAlerts);
-        setError(null);
+        setAlerts(alertsArray);
       }
+      
+      setError(null);
     } catch (err) {
       console.error('Failed to fetch alerts:', err);
       setError('Unable to fetch alerts');
@@ -211,9 +164,9 @@ function RecentAlertsPanel() {
     return () => clearInterval(interval);
   }, []);
   
-  // Count alerts by state
-  const firingCount = alerts.filter(a => a.state === 'firing' || a.state === 'alerting').length;
-  const pendingCount = alerts.filter(a => a.state === 'pending').length;
+  // Count by severity
+  const criticalCount = alerts.filter(a => (a.severity || a.labels?.severity) === 'critical').length;
+  const warningCount = alerts.filter(a => (a.severity || a.labels?.severity) === 'warning').length;
   
   return (
     <div style={{
@@ -244,7 +197,7 @@ function RecentAlertsPanel() {
             Recent Alerts
           </h3>
           <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0 0' }}>
-            Live alerts from Grafana
+            From Prometheus
           </p>
         </div>
         <button 
@@ -255,8 +208,6 @@ function RecentAlertsPanel() {
             borderRadius: '6px',
             padding: '6px',
             cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
           }}
           title="Refresh"
         >
@@ -265,14 +216,14 @@ function RecentAlertsPanel() {
       </div>
       
       {/* Summary badges */}
-      {(firingCount > 0 || pendingCount > 0) && (
+      {(criticalCount > 0 || warningCount > 0) && (
         <div style={{ 
           display: 'flex', 
           gap: '8px', 
           marginBottom: '12px',
           flexWrap: 'wrap'
         }}>
-          {firingCount > 0 && (
+          {criticalCount > 0 && (
             <span style={{
               fontSize: '10px',
               fontWeight: '600',
@@ -281,10 +232,10 @@ function RecentAlertsPanel() {
               backgroundColor: '#fef2f2',
               color: '#dc2626',
             }}>
-              {firingCount} Firing
+              {criticalCount} Critical
             </span>
           )}
-          {pendingCount > 0 && (
+          {warningCount > 0 && (
             <span style={{
               fontSize: '10px',
               fontWeight: '600',
@@ -293,7 +244,7 @@ function RecentAlertsPanel() {
               backgroundColor: '#fff7ed',
               color: '#f97316',
             }}>
-              {pendingCount} Pending
+              {warningCount} Warning
             </span>
           )}
         </div>
@@ -320,9 +271,6 @@ function RecentAlertsPanel() {
           <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: '#dc2626' }}>
             {error}
           </p>
-          <p style={{ fontSize: '11px', margin: '4px 0 0 0', color: '#94a3b8' }}>
-            Check backend connection
-          </p>
         </div>
       )}
       
@@ -348,7 +296,7 @@ function RecentAlertsPanel() {
       {/* Alert list */}
       {!loading && alerts.length > 0 && (
         <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-          {alerts.slice(0, 10).map((alert, index) => (
+          {alerts.map((alert, index) => (
             <AlertItem key={alert.fingerprint || index} alert={alert} />
           ))}
         </div>
