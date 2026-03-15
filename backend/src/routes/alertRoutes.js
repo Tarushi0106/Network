@@ -16,14 +16,23 @@ router.get("/", async (req, res) => {
       device: a.labels.instance,
       severity: a.labels.severity,
       state: a.state,
-      activeAt: a.activeAt
+      activeAt: a.activeAt,
+      labels: a.labels
     }));
 
-    res.json({ alerts: formattedAlerts });
+    res.json({ 
+      success: true,
+      count: formattedAlerts.length,
+      data: formattedAlerts 
+    });
 
   } catch (err) {
     console.error("Alert fetch error:", err.message);
-    res.json({ alerts: [] });
+    res.json({ 
+      success: false,
+      count: 0,
+      data: [] 
+    });
   }
 });
 
