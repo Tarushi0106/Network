@@ -13,7 +13,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const PROMELLEUS_URL = process.env.PROMETHEUS_URL || 'http://localhost:9090';
+const PROMELLEUS_URL = process.env.PROMETHEUS_URL || 'http://51.20.52.19:9090';
 async function checkRouter(ip) {
   const result = await ping.promise.probe(ip);
   return result.alive;
@@ -58,7 +58,11 @@ async function queryPrometheusRange(query, start, end, step = '1m') {
  * Returns total routers and device status
  */
 router.get("/devices", async (req, res) => {
-
+  
+  // First query Prometheus for device status
+  const upQuery = 'up{job="snmp"}';
+  const upResult = await queryPrometheus(upQuery);
+  
   const devices = await Promise.all(
     LOCATIONS.map(async (loc) => {
 
