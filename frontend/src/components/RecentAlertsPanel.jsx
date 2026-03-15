@@ -160,7 +160,7 @@ function RecentAlertsPanel() {
       console.log('Fetching alerts from backend...');
       
       // Use backend proxy endpoint
-      const response = await fetch(`${API_URL}/api/alerts/grafana?limit=10`, {
+      const response = await fetch(`${API_URL}/api/alerts`, {
         headers: {
           'Content-Type': 'application/json'
         }
