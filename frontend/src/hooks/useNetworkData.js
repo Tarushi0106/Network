@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const API_URL = 'http://51.20.52.19:5000';
+const API_URL = '';
 
 /**
  * Custom hook for fetching device data

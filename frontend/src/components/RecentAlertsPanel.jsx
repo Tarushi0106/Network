@@ -128,7 +128,7 @@ function RecentAlertsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const API_URL = 'http://51.20.52.19:5000';
+  const API_URL = '';
   
   const fetchAlerts = async () => {
     try {
