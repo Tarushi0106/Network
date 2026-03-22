@@ -40,9 +40,9 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration - allow Amplify frontend
 app.use(cors({
-  origin: "*"
+  origin: ["https://main.d1hq5872boy64e.amplifyapp.com", "http://localhost:3001", "http://localhost:3002"]
 }));
 // Body parsing
 app.use(express.json());

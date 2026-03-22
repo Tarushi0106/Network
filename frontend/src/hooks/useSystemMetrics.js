@@ -13,11 +13,14 @@
 
 import { useState, useEffect } from 'react';
 
+// API Base URL - Direct to EC2 (bypasses Amplify proxy)
+const API_BASE_URL = 'https://51.20.52.19';
+
 /**
  * Fetch data from API
  */
 async function fetchFromAPI(endpoint) {
-  const response = await fetch(endpoint);
+  const response = await fetch(`${API_BASE_URL}${endpoint}`);
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }

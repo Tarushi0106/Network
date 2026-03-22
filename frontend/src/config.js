@@ -1,13 +1,10 @@
 // Frontend Configuration
-// For development: use localhost
-// For production: use your server IP/domain
+// For production: Direct to EC2 with HTTPS
 
-// Use environment variables if available (for Vite), otherwise use empty (relative URLs)
 const CONFIG = {
-  // VITE_API_URL and VITE_GRAFANA_URL can be set in Amplify environment variables
-  // For production, use relative URLs to avoid Mixed Content errors
-  API_URL: import.meta.env.VITE_API_URL || '',
-  GRAFANA_URL: import.meta.env.VITE_GRAFANA_URL || '',
+  // Direct API URL to EC2 (bypasses Amplify proxy)
+  API_URL: 'https://51.20.52.19',
+  GRAFANA_URL: 'https://51.20.52.19:3000',
 };
 
 // Export for use in components
