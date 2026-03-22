@@ -79,7 +79,7 @@ const GeoMapPanel = ({ timeRange = '1h' }) => {
   const [selectedLocation, setSelectedLocation] = useState(locationsWithIds[0]);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = 'http://localhost:5000';
+  const API_URL = '';
   
   // Fetch real data from API
   const fetchData = async () => {

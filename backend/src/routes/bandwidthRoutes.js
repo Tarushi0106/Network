@@ -8,7 +8,8 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const PROMELLEUS_URL = process.env.PROMETHEUS_URL || 'http://localhost:9090';
+const PROMELLEUS_URL = process.env.PROMETHEUS_URL || 'http://51.20.52.19:9090';
+console.log('BandwidthRoutes - Prometheus URL:', PROMELLEUS_URL);
 
 // Parse duration string to milliseconds
 function parseDuration(duration) {

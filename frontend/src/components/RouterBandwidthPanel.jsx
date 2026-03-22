@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000";
+const API_URL = "";
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -20,7 +20,7 @@ const RouterBandwidthPanel = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('24h');
 
-  const d = "http://localhost:5000";
+  const d = "";
 
   // Fetch bandwidth data
   const fetchData = async () => {

@@ -14,6 +14,8 @@ const mongoose = require('mongoose');
 
 // Load environment variables
 require('dotenv').config();
+console.log('PROMETHEUS_URL from .env:', process.env.PROMETHEUS_URL);
+console.log('GRAFANA_URL from .env:', process.env.GRAFANA_URL);
 
 // Import routes
 const routerRoutes = require('./routes/routerRoutes');
