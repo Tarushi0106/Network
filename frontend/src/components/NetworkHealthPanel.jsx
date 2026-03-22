@@ -152,7 +152,7 @@ function NetworkHealthPanel() {
   const [healthData, setHealthData] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = '';
+  const API_URL = 'https://51.20.52.19';
   
   // Fetch data from API
   const fetchData = async () => {

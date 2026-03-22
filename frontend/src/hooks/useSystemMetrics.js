@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react';
 
-// API Base URL - Direct to EC2 (bypasses Amplify proxy)
+// API Base URL - Direct to EC2
 const API_BASE_URL = 'https://51.20.52.19';
 
 /**

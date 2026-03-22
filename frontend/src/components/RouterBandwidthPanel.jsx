@@ -1,4 +1,4 @@
-const API_URL = "";
+const API_URL = "https://51.20.52.19";
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 

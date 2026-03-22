@@ -79,7 +79,7 @@ const GeoMapPanel = ({ timeRange = '1h' }) => {
   const [selectedLocation, setSelectedLocation] = useState(locationsWithIds[0]);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = '';
+  const API_URL = 'https://51.20.52.19';
   
   // Fetch real data from API
   const fetchData = async () => {
