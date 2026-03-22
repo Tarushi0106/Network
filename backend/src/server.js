@@ -24,6 +24,7 @@ const grafanaRoutes = require('./routes/grafanaRoutes');
 const bandwidthRoutes = require('./routes/bandwidthRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
 const networkMonitoringRoutes = require('./routes/networkMonitoringRoutes');
+const prometheusRoutes = require('./routes/prometheusRoutes');
 
 // Import services
 const prometheusService = require('./services/prometheusService');
@@ -121,6 +122,9 @@ app.use('/api', deviceRoutes);
 
 // Network Monitoring routes (consolidated - network-downtime and network-outage-history)
 app.use('/api', networkMonitoringRoutes);
+
+// Prometheus API routes (CPU, Memory, Network, Disk)
+app.use('/api', prometheusRoutes);
 
 // ============================================================================
 // PROMETHEUS DIRECT PROXY (Optional - for frontend to query Prometheus directly)
