@@ -1,4 +1,4 @@
-const API_URL = "https://51.20.52.19";
+const API_URL = "https://weed-promotions-satisfy-oaks.trycloudflare.com";
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 

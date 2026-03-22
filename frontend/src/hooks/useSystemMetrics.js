@@ -14,7 +14,7 @@
 import { useState, useEffect } from 'react';
 
 // API Base URL - Direct to EC2
-const API_BASE_URL = 'https://51.20.52.19';
+const API_BASE_URL = 'https://weed-promotions-satisfy-oaks.trycloudflare.com';
 
 /**
  * Fetch data from API

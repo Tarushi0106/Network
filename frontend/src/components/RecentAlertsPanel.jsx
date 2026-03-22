@@ -128,7 +128,7 @@ function RecentAlertsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const API_URL = 'https://51.20.52.19';
+  const API_URL = 'https://weed-promotions-satisfy-oaks.trycloudflare.com';
   
   const fetchAlerts = async () => {
     try {

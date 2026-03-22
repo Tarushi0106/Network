@@ -11,7 +11,7 @@ const LOCATIONS = [
 
 // Grafana configuration
 const GRAFANA_CONFIG = {
-  baseUrl: 'http://51.20.52.19:3000',
+  baseUrl: 'https://weed-promotions-satisfy-oaks.trycloudflare.com:3000',
   dashboardUid: 'adhj2dk',
   panelId: '2', // Adjust based on your panel
   theme: 'dark'
@@ -44,7 +44,7 @@ const GrafanaPanel = () => {
   // Fetch router status from backend
   const fetchRouterStatus = async () => {
     try {
-      const response = await fetch('https://51.20.52.19/api/bandwidth/current');
+      const response = await fetch('https://weed-promotions-satisfy-oaks.trycloudflare.com/api/bandwidth/current');
       const data = await response.json();
       
       if (data.success) {

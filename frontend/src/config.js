@@ -1,12 +1,12 @@
 // Frontend Configuration
-// For production: Direct to EC2 with HTTPS
+// For production: Direct to Cloudflare tunnel
 
-const API_BASE = "https://51.20.52.19/api";
+const API_BASE = "https://weed-promotions-satisfy-oaks.trycloudflare.com/api";
 
 const CONFIG = {
-  // Direct API URL to EC2 (bypasses Amplify proxy)
+  // Direct API URL to backend
   API_URL: API_BASE,
-  GRAFANA_URL: 'https://51.20.52.19:3000',
+  GRAFANA_URL: 'https://weed-promotions-satisfy-oaks.trycloudflare.com:3000',
 };
 
 // Export for use in components
