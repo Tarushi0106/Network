@@ -44,7 +44,7 @@ const GrafanaPanel = () => {
   // Fetch router status from backend
   const fetchRouterStatus = async () => {
     try {
-      const response = await fetch('/api/bandwidth/current');
+      const response = await fetch('https://51.20.52.19/api/bandwidth/current');
       const data = await response.json();
       
       if (data.success) {
